@@ -1,0 +1,273 @@
+export const INITIAL_CATEGORIES = [
+  { id: "engineering", name: "Software Engineering", icon: "Code", count: 42, color: "bg-blue-50 text-blue-600" },
+  { id: "design", name: "UI / UX Design", icon: "Palette", count: 28, color: "bg-purple-50 text-purple-600" },
+  { id: "product", name: "Product Management", icon: "Briefcase", count: 19, color: "bg-emerald-50 text-emerald-600" },
+  { id: "marketing", name: "Growth & Marketing", icon: "TrendingUp", count: 24, color: "bg-amber-50 text-amber-600" },
+  { id: "data", name: "Data Science & AI", icon: "Database", count: 35, color: "bg-rose-50 text-rose-600" },
+  { id: "sales", name: "Sales & BD", icon: "DollarSign", count: 16, color: "bg-indigo-50 text-indigo-600" },
+  { id: "devops", name: "DevOps & Cloud", icon: "Server", count: 21, color: "bg-teal-50 text-teal-600" },
+  { id: "customer", name: "Customer Success", icon: "Headphones", count: 14, color: "bg-orange-50 text-orange-600" },
+];
+
+export const INITIAL_JOBS = [
+  {
+    id: "job-1",
+    title: "Senior Full Stack Engineer (Next.js & Node.js)",
+    company: "CloudScale Inc.",
+    companyLogo: "☁️",
+    location: "San Francisco, CA",
+    workplaceType: "Remote",
+    jobType: "Full-time",
+    salaryMin: 140000,
+    salaryMax: 185000,
+    currency: "USD",
+    category: "Software Engineering",
+    experienceLevel: "Senior",
+    postedAt: "2 hours ago",
+    status: "active",
+    featured: true,
+    description: "CloudScale is seeking an experienced Full Stack Engineer to build next-generation cloud analytics and serverless observability platforms. You will architect high-performance frontends with Next.js and resilient backend microservices with Node.js and PostgreSQL.",
+    requirements: [
+      "5+ years of experience with React, Next.js, and Node.js.",
+      "Deep understanding of relational databases (PostgreSQL) and ORMs (Drizzle / Prisma).",
+      "Experience deploying scalable apps on AWS, GCP, or Vercel/Render.",
+      "Strong grasp of RESTful APIs, JWT authentication, and web security."
+    ],
+    benefits: [
+      "100% Remote flexibility",
+      "Comprehensive medical, dental, and vision insurance",
+      "Unlimited PTO and home office stipend",
+      "Competitive equity package"
+    ],
+    applicantsCount: 14,
+  },
+  {
+    id: "job-2",
+    title: "Lead Product Designer (UI/UX & Design Systems)",
+    company: "PixelCraft Labs",
+    companyLogo: "🎨",
+    location: "New York, NY",
+    workplaceType: "Hybrid",
+    jobType: "Full-time",
+    salaryMin: 130000,
+    salaryMax: 165000,
+    currency: "USD",
+    category: "UI / UX Design",
+    experienceLevel: "Lead",
+    postedAt: "5 hours ago",
+    status: "active",
+    featured: true,
+    description: "We are looking for a visionary Lead Product Designer to guide the end-to-end design strategy for our flagship fintech SaaS tools. You will lead user research, create design tokens, and build reusable Figma components.",
+    requirements: [
+      "6+ years of UX/UI design experience for complex web applications.",
+      "Expertise in Figma, prototyping tools, and scalable design systems.",
+      "Proven ability to translate user feedback into clean, intuitive UI workflows.",
+      "Portfolio showcasing end-to-end product case studies."
+    ],
+    benefits: [
+      "Generous 401(k) matching",
+      "Annual $3,000 learning & conference budget",
+      "Commuter benefits & wellness stipend",
+      "Flexible working hours"
+    ],
+    applicantsCount: 9,
+  },
+  {
+    id: "job-3",
+    title: "AI / Machine Learning Engineer",
+    company: "NeuralPulse AI",
+    companyLogo: "⚡",
+    location: "Austin, TX",
+    workplaceType: "Remote",
+    jobType: "Full-time",
+    salaryMin: 160000,
+    salaryMax: 210000,
+    currency: "USD",
+    category: "Data Science & AI",
+    experienceLevel: "Senior",
+    postedAt: "1 day ago",
+    status: "active",
+    featured: true,
+    description: "NeuralPulse is building generative AI copilots for enterprise customer workflows. You will fine-tune foundation models, deploy low-latency inference pipelines, and optimize retrieval-augmented generation (RAG) architectures.",
+    requirements: [
+      "Master's or PhD in Computer Science, AI, or equivalent practical experience.",
+      "Solid proficiency in Python, PyTorch, Hugging Face, and Vector DBs.",
+      "Experience serving LLMs with vLLM, TensorRT-LLM, or Ray.",
+      "Strong background in API design and scalable data preprocessing."
+    ],
+    benefits: [
+      "Top-tier compensation and significant equity grants",
+      "Cutting-edge GPU compute clusters available for research",
+      "Annual company retreats in international destinations",
+      "Premium health coverage"
+    ],
+    applicantsCount: 23,
+  },
+  {
+    id: "job-4",
+    title: "DevOps & Cloud Infrastructure Engineer",
+    company: "Apex Security",
+    companyLogo: "🛡️",
+    location: "Seattle, WA",
+    workplaceType: "Remote",
+    jobType: "Full-time",
+    salaryMin: 125000,
+    salaryMax: 160000,
+    currency: "USD",
+    category: "DevOps & Cloud",
+    experienceLevel: "Mid-Level",
+    postedAt: "2 days ago",
+    status: "active",
+    featured: false,
+    description: "Join Apex Security to manage high-availability infrastructure across multiple regions. You will build automated CI/CD pipelines, manage Kubernetes clusters, and enforce zero-trust security policies.",
+    requirements: [
+      "3+ years managing Kubernetes, Terraform, and Docker.",
+      "Hands-on experience with AWS, Cloudflare, and CI/CD tools (GitHub Actions).",
+      "Proficiency in monitoring with Prometheus, Grafana, and Datadog.",
+      "Strong scripting abilities in Bash and Python/Go."
+    ],
+    benefits: [
+      "Flexible remote schedule",
+      "Health, dental, vision coverage",
+      "Equipment allowance ($2,500)",
+      "Paid parental leave"
+    ],
+    applicantsCount: 7,
+  },
+  {
+    id: "job-5",
+    title: "Growth Marketing Specialist",
+    company: "HyperGrowth Media",
+    companyLogo: "🚀",
+    location: "Chicago, IL",
+    workplaceType: "On-site",
+    jobType: "Full-time",
+    salaryMin: 85000,
+    salaryMax: 110000,
+    currency: "USD",
+    category: "Growth & Marketing",
+    experienceLevel: "Mid-Level",
+    postedAt: "3 days ago",
+    status: "active",
+    featured: false,
+    description: "We are seeking a data-driven Growth Marketer to accelerate customer acquisition across paid media, SEO, and lifecycle email funnels. You will run rapid A/B experiments and optimize conversion rates.",
+    requirements: [
+      "3+ years in B2B SaaS growth or performance marketing.",
+      "Proven track record scaling Google Ads, LinkedIn, and Meta campaigns.",
+      "Strong analytical skills with Google Analytics 4, Mixpanel, and SQL.",
+      "Experience with email automation tools (HubSpot, Customer.io)."
+    ],
+    benefits: [
+      "Performance-based bonuses",
+      "Catered lunches and downtown office gym",
+      "Comprehensive insurance",
+      "Career growth progression path"
+    ],
+    applicantsCount: 18,
+  },
+  {
+    id: "job-6",
+    title: "Frontend Developer (React & TypeScript)",
+    company: "Starlight Digital",
+    companyLogo: "✨",
+    location: "Boston, MA",
+    workplaceType: "Hybrid",
+    jobType: "Contract",
+    salaryMin: 90000,
+    salaryMax: 120000,
+    currency: "USD",
+    category: "Software Engineering",
+    experienceLevel: "Junior / Mid",
+    postedAt: "4 days ago",
+    status: "active",
+    featured: false,
+    description: "Looking for an enthusiastic Frontend Developer to collaborate with our agency teams creating bespoke web apps for Fortune 500 clients.",
+    requirements: [
+      "2+ years with modern React and TypeScript.",
+      "Proficiency in Tailwind CSS, CSS grid/flexbox, and responsive web design.",
+      "Experience consuming REST and GraphQL APIs.",
+      "Attention to detail and passion for pixel-perfect user experiences."
+    ],
+    benefits: [
+      "Contract-to-hire option",
+      "Flexible schedule",
+      "Mentorship from principal engineers"
+    ],
+    applicantsCount: 31,
+  }
+];
+
+export const INITIAL_APPLICATIONS = [
+  {
+    id: "app-1",
+    jobId: "job-1",
+    jobTitle: "Senior Full Stack Engineer (Next.js & Node.js)",
+    company: "CloudScale Inc.",
+    companyLogo: "☁️",
+    appliedDate: "2026-11-20",
+    status: "Interview",
+    statusColor: "bg-purple-100 text-purple-800",
+    location: "San Francisco, CA (Remote)",
+    salary: "$140k - $185k",
+  },
+  {
+    id: "app-2",
+    jobId: "job-3",
+    jobTitle: "AI / Machine Learning Engineer",
+    company: "NeuralPulse AI",
+    companyLogo: "⚡",
+    appliedDate: "2026-11-18",
+    status: "Under Review",
+    statusColor: "bg-blue-100 text-blue-800",
+    location: "Austin, TX (Remote)",
+    salary: "$160k - $210k",
+  },
+  {
+    id: "app-3",
+    jobId: "job-2",
+    jobTitle: "Lead Product Designer",
+    company: "PixelCraft Labs",
+    companyLogo: "🎨",
+    appliedDate: "2026-11-12",
+    status: "Offer",
+    statusColor: "bg-emerald-100 text-emerald-800",
+    location: "New York, NY",
+    salary: "$130k - $165k",
+  },
+  {
+    id: "app-4",
+    jobId: "job-4",
+    jobTitle: "DevOps & Cloud Infrastructure Engineer",
+    company: "Apex Security",
+    companyLogo: "🛡️",
+    appliedDate: "2026-11-05",
+    status: "Rejected",
+    statusColor: "bg-rose-100 text-rose-800",
+    location: "Seattle, WA (Remote)",
+    salary: "$125k - $160k",
+  }
+];
+
+export const INITIAL_SAVED_JOBS = ["job-1", "job-2"];
+
+export const INITIAL_STATS = {
+  candidate: {
+    applied: 4,
+    interviews: 1,
+    offers: 1,
+    saved: 2,
+  },
+  employer: {
+    activeJobs: 3,
+    totalApplicants: 46,
+    interviewsScheduled: 5,
+    hired: 2,
+  },
+  admin: {
+    totalUsers: 1420,
+    totalJobs: 184,
+    totalApplications: 932,
+    pendingModeration: 6,
+    activeCompanies: 112,
+  }
+};
