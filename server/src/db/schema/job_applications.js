@@ -4,6 +4,7 @@ const { pgTable, serial, integer, varchar, text, timestamp } = require('drizzle-
 const job_applications = pgTable('job_applications', {
   id: serial('id').primaryKey(),
   job_id: integer('job_id').notNull(),
+  user_id: varchar('user_id', { length: 255 }),
   full_name: varchar('full_name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }).notNull(),
   phone: varchar('phone', { length: 60 }),

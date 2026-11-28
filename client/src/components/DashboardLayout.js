@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -8,16 +8,35 @@ import Logo from './Logo';
 export default function DashboardLayout({ children, role = 'candidate', activeTab }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout, switchRole } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  const requiredRole = role.toUpperCase();
+  const userRole = (user?.role || '').toUpperCase();
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+    if (userRole && userRole !== requiredRole) {
+      const target =
+        userRole === 'EMPLOYER'
+          ? '/employer/dashboard'
+          : userRole === 'ADMIN'
+          ? '/admin'
+          : '/candidate/dashboard';
+      router.replace(target);
+    }
+  }, [isLoading, user, userRole, requiredRole, router]);
 
   const candidateNav = [
     { label: 'Dashboard', href: '/candidate/dashboard', icon: '📊' },
     { label: 'My Profile', href: '/candidate/profile', icon: '👤' },
     { label: 'My Applications', href: '/candidate/dashboard#applications', icon: '📄' },
     { label: 'Saved Jobs', href: '/candidate/saved', icon: '🔖' },
-    { label: 'My Resume', href: '/candidate/profile', icon: '📝' },
-    { label: 'Settings', href: '/candidate/profile', icon: '⚙️' },
+    { label: 'Browse Jobs', href: '/jobs', icon: '🔍' },
   ];
 
   const employerNav = [
@@ -26,30 +45,37 @@ export default function DashboardLayout({ children, role = 'candidate', activeTa
     { label: 'Post a Job', href: '/employer/jobs/new', icon: '➕' },
     { label: 'Manage Jobs', href: '/employer/dashboard#jobs', icon: '📋' },
     { label: 'Applicants', href: '/employer/dashboard#applicants', icon: '👥' },
-    { label: 'Settings', href: '/employer/profile', icon: '⚙️' },
   ];
 
   const adminNav = [
     { label: 'Dashboard', href: '/admin', icon: '📊' },
     { label: 'Manage Users', href: '/admin#users', icon: '👥' },
-    { label: 'Manage Jobs', href: '/admin#jobs', icon: '📋' },
-    { label: 'Moderation', href: '/admin#moderation', icon: '🛡️' },
-    { label: 'Reports', href: '/admin#reports', icon: '📈' },
-    { label: 'Settings', href: '/admin#settings', icon: '⚙️' },
+    { label: 'Job Moderation', href: '/admin#jobs', icon: '📋' },
+    { label: 'Companies', href: '/admin#companies', icon: '🏢' },
+    { label: 'Audit Logs', href: '/admin#audit', icon: '🛡️' },
   ];
 
   const navItems = role === 'employer' ? employerNav : role === 'admin' ? adminNav : candidateNav;
+
+  if (isLoading || !user || userRole !== requiredRole) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p className="text-sm text-gray-500 font-medium">
+          {isLoading ? 'Verifying your session...' : 'Redirecting...'}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex">
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-100 flex-shrink-0 fixed inset-y-0 z-30">
-        {/* Brand header */}
-        <div className="h-18 px-6 flex items-center border-b border-gray-50">
+        <div className="h-16 px-6 flex items-center border-b border-gray-50">
           <Logo size="md" />
         </div>
 
-        {/* Nav Links */}
         <div className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = activeTab ? activeTab === item.label : pathname === item.href;
@@ -70,7 +96,6 @@ export default function DashboardLayout({ children, role = 'candidate', activeTa
           })}
         </div>
 
-        {/* Sidebar Footer with Logout */}
         <div className="p-4 border-t border-gray-100">
           <button
             onClick={() => logout()}
@@ -128,7 +153,6 @@ export default function DashboardLayout({ children, role = 'candidate', activeTa
 
       {/* Main Content Area */}
       <div className="flex-1 md:ml-64 flex flex-col min-w-0">
-        {/* Top Navbar */}
         <header className="h-16 bg-white border-b border-gray-100 px-6 flex items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <button
@@ -140,56 +164,30 @@ export default function DashboardLayout({ children, role = 'candidate', activeTa
               </svg>
             </button>
             <div className="text-sm font-semibold text-gray-700 capitalize">
-              {role} Space
+              {role} Workspace
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Quick Demo Switcher */}
-            <div className="hidden sm:flex items-center gap-1.5 bg-gray-50 border border-gray-200/80 rounded-full px-2 py-1">
-              <span className="text-[11px] font-medium text-gray-500 pl-1">Role:</span>
-              {[
-                { r: 'candidate', href: '/candidate/dashboard' },
-                { r: 'employer', href: '/employer/dashboard' },
-                { r: 'admin', href: '/admin' }
-              ].map(({ r, href }) => (
-                <button
-                  key={r}
-                  onClick={() => {
-                    switchRole(r);
-                    router.push(href);
-                  }}
-                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold capitalize transition-all ${
-                    role === r
-                      ? 'bg-[#4338ca] text-white shadow-xs'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-
-            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-50 relative">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              <span className="w-2 h-2 rounded-full bg-red-500 absolute top-2 right-2"></span>
-            </button>
+            <Link
+              href="/jobs"
+              className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+            >
+              Browse Jobs
+            </Link>
 
             <div className="flex items-center gap-2.5 pl-2 border-l border-gray-100">
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
                 {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="hidden sm:block text-left">
-                <p className="text-xs font-bold text-gray-900 leading-tight">{user?.name || 'User'}</p>
-                <p className="text-[10px] text-gray-500 capitalize">{role}</p>
+                <p className="text-xs font-bold text-gray-900 leading-tight">{user?.name}</p>
+                <p className="text-[10px] text-gray-500 capitalize">{userRole.toLowerCase()}</p>
               </div>
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="p-6 lg:p-8 flex-1">
           {children}
         </main>

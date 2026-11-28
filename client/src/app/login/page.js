@@ -1,32 +1,30 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { 
-  Briefcase, 
-  Mail, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  ArrowRight, 
-  ShieldCheck, 
-  UserCheck, 
-  Building2 
-} from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import Logo from '../../components/Logo';
 import { useAuth } from '../../context/AuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { user, isLoading, login } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('candidate');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      const r = (user.role || '').toUpperCase();
+      if (r === 'EMPLOYER') router.replace('/employer/dashboard');
+      else if (r === 'ADMIN') router.replace('/admin');
+      else router.replace('/candidate/dashboard');
+    }
+  }, [isLoading, user, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,16 +32,21 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const loggedUser = await login(email, password, role);
-      if (loggedUser.role === 'employer') {
+      const loggedUser = await login(email, password);
+      const userRole = (loggedUser?.role || '').toUpperCase();
+      if (userRole === 'EMPLOYER') {
         router.push('/employer/dashboard');
-      } else if (loggedUser.role === 'admin') {
+      } else if (userRole === 'ADMIN') {
         router.push('/admin');
       } else {
         router.push('/candidate/dashboard');
       }
     } catch (err) {
-      setError('Invalid email or password. Please try again.');
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Invalid email or password. Please try again.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -92,39 +95,38 @@ export default function LoginPage() {
                 <label className="block text-xs font-semibold text-gray-700">
                   Password
                 </label>
-                <a href="#" className="text-[11px] font-semibold text-blue-600 hover:text-blue-500">
-                  Forgot password?
-                </a>
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9 w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  placeholder="Enter your password"
+                  className="pl-9 pr-9 w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center text-xs text-gray-600">
-                <input type="checkbox" defaultChecked className="rounded border-gray-300 text-blue-600 mr-2" />
-                <span>Keep me signed in</span>
-              </label>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-3 rounded-xl shadow-md shadow-blue-600/30 transition flex items-center justify-center space-x-2"
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-xs py-3 rounded-xl shadow-md shadow-blue-600/30 transition flex items-center justify-center space-x-2"
             >
               {loading ? (
                 <span>Signing in...</span>
               ) : (
                 <>
-                  <span>Sign In as {role.charAt(0).toUpperCase() + role.slice(1)}</span>
+                  <span>Sign In</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </>
               )}
@@ -133,7 +135,7 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-500">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link href="/register" className="font-semibold text-blue-600 hover:text-blue-700">
                 Create an account
               </Link>

@@ -4,15 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon server/src/server.js",
-    "start": "node server/src/server.js",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:seed": "node src/db/migrateAndSeed.js",
     "db:studio": "drizzle-kit studio"
   },
   "keywords": [],

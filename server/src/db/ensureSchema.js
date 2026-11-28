@@ -1,0 +1,125 @@
+const { pool } = require('./index');
+
+const ENSURE_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS companies (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  logo VARCHAR(255) DEFAULT '🏢',
+  website VARCHAR(255),
+  location VARCHAR(255),
+  industry VARCHAR(255),
+  size VARCHAR(100),
+  description TEXT,
+  verification_status VARCHAR(32) NOT NULL DEFAULT 'VERIFIED',
+  owner_id UUID,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS owner_id UUID;
+
+CREATE TABLE IF NOT EXISTS users (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role VARCHAR(50) NOT NULL DEFAULT 'CANDIDATE',
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  headline VARCHAR(255),
+  location VARCHAR(255),
+  bio TEXT,
+  skills JSONB DEFAULT '[]'::jsonb,
+  phone VARCHAR(60),
+  portfolio VARCHAR(500),
+  resume_name VARCHAR(255),
+  company_name VARCHAR(255),
+  company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS headline VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS location VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS skills JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(60);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS portfolio VARCHAR(500);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_name VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS jobs (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  company_id INTEGER REFERENCES companies(id),
+  company_name VARCHAR(255) NOT NULL,
+  company_logo VARCHAR(255) DEFAULT '💼',
+  category VARCHAR(120) NOT NULL,
+  job_type VARCHAR(60) NOT NULL DEFAULT 'Full-time',
+  workplace_type VARCHAR(60) NOT NULL DEFAULT 'Remote',
+  location VARCHAR(255) NOT NULL,
+  salary_min INTEGER NOT NULL DEFAULT 100000,
+  salary_max INTEGER NOT NULL DEFAULT 150000,
+  currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+  experience_level VARCHAR(60) NOT NULL DEFAULT 'Mid-Level',
+  description TEXT NOT NULL,
+  requirements JSONB DEFAULT '[]'::jsonb,
+  benefits JSONB DEFAULT '[]'::jsonb,
+  status VARCHAR(32) NOT NULL DEFAULT 'PUBLISHED',
+  featured BOOLEAN NOT NULL DEFAULT FALSE,
+  applicants_count INTEGER NOT NULL DEFAULT 0,
+  posted_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  posted_at VARCHAR(60) DEFAULT 'Just now',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS posted_by UUID REFERENCES users(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS job_applications (
+  id SERIAL PRIMARY KEY,
+  job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  full_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(60),
+  cv_url VARCHAR(500),
+  cover_letter TEXT,
+  portfolio VARCHAR(500),
+  status VARCHAR(60) NOT NULL DEFAULT 'Pending Review',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE job_applications ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS saved_jobs (
+  id SERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, job_id)
+);
+
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  subject VARCHAR(255),
+  message TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  admin_id VARCHAR(255) NOT NULL,
+  action VARCHAR(120) NOT NULL,
+  resource VARCHAR(60) NOT NULL,
+  resource_id VARCHAR(255),
+  details JSONB,
+  performed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+`;
+
+async function ensureSchema() {
+  await pool.query(ENSURE_SCHEMA_SQL);
+}
+
+module.exports = { ensureSchema, ENSURE_SCHEMA_SQL };

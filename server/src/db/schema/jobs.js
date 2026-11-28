@@ -22,6 +22,7 @@ const jobs = pgTable('jobs', {
   status: varchar('status', { length: 32 }).notNull().default('PUBLISHED'), // PENDING, PUBLISHED, REJECTED, CLOSED
   featured: boolean('featured').notNull().default(false),
   applicants_count: integer('applicants_count').notNull().default(0),
+  posted_by: varchar('posted_by', { length: 255 }),
   posted_at: varchar('posted_at', { length: 60 }).default('Just now'),
   created_at: timestamp('created_at').defaultNow(),
 });

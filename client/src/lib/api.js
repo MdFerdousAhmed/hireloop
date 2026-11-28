@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { INITIAL_JOBS, INITIAL_APPLICATIONS, INITIAL_SAVED_JOBS, INITIAL_STATS } from '../data/mockData';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -9,28 +8,66 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true,
-  timeout: 6000,
+  timeout: 15000,
 });
 
-// Helper for local storage persistence
-const getStorage = (key, fallback) => {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const val = localStorage.getItem(`hireloop_${key}`);
-    return val ? JSON.parse(val) : fallback;
-  } catch (err) {
-    return fallback;
+// Attach Bearer access token from localStorage on every request
+apiClient.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('hireloop_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
-};
+  return config;
+});
 
-const setStorage = (key, value) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(`hireloop_${key}`, JSON.stringify(value));
-  } catch (err) {
-    console.error(err);
+// Shared refresh promise to deduplicate concurrent 401 refresh attempts
+let refreshPromise = null;
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    const status = error.response?.status;
+    const url = originalRequest?.url || '';
+
+    const isAuthRoute =
+      url.includes('/auth/login') ||
+      url.includes('/auth/register') ||
+      url.includes('/auth/refresh');
+
+    if (status === 401 && originalRequest && !originalRequest._retry && !isAuthRoute) {
+      originalRequest._retry = true;
+      try {
+        if (!refreshPromise) {
+          refreshPromise = axios
+            .post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true, timeout: 10000 })
+            .finally(() => {
+              refreshPromise = null;
+            });
+        }
+        const refreshRes = await refreshPromise;
+        const { token, user } = refreshRes.data?.data || {};
+        if (token && typeof window !== 'undefined') {
+          localStorage.setItem('hireloop_token', token);
+          if (user) {
+            localStorage.setItem('hireloop_user', JSON.stringify(user));
+          }
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return apiClient(originalRequest);
+        }
+      } catch {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('hireloop_token');
+          localStorage.removeItem('hireloop_user');
+        }
+      }
+    }
+
+    return Promise.reject(error);
   }
-};
+);
 
 export const api = {
   // Auth API
@@ -42,167 +79,123 @@ export const api = {
     const res = await apiClient.post('/auth/register', data);
     return res.data?.data || {};
   },
-  async getCurrentUser() {
-    try {
-      const res = await apiClient.get('/auth/me');
-      return res.data?.data || null;
-    } catch (e) {
-      return null;
-    }
+  async refresh() {
+    const res = await apiClient.post('/auth/refresh');
+    return res.data?.data || {};
   },
+  async logout() {
+    await apiClient.post('/auth/logout');
+  },
+  async getCurrentUser() {
+    const res = await apiClient.get('/auth/me');
+    return res.data?.data || null;
+  },
+  async updateProfile(data) {
+    const res = await apiClient.put('/auth/profile', data);
+    return res.data?.data || null;
+  },
+
+  // Public stats & contact
+  async getPublicStats() {
+    const res = await apiClient.get('/stats/public');
+    return res.data?.data || {};
+  },
+  async submitContact(data) {
+    const res = await apiClient.post('/contact', data);
+    return res.data?.data || {};
+  },
+
+  // Companies API
+  async getCompanies(params = {}) {
+    const res = await apiClient.get('/companies', { params });
+    return res.data?.data || [];
+  },
+  async getMyCompany() {
+    const res = await apiClient.get('/companies/me');
+    return res.data?.data || null;
+  },
+  async updateMyCompany(data) {
+    const res = await apiClient.put('/companies/me', data);
+    return res.data?.data || null;
+  },
+
   // Jobs API
   async getJobs(params = {}) {
-    try {
-      const res = await apiClient.get('/jobs', { params });
-      if (res.data?.success && Array.isArray(res.data?.data) && res.data.data.length > 0) {
-        return res.data.data;
-      }
-    } catch (e) {
-      console.warn('Backend API unavailable, using local data:', e.message);
-    }
-    const localJobs = getStorage('jobs', INITIAL_JOBS);
-    let filtered = [...localJobs];
-    if (params.query) {
-      const q = params.query.toLowerCase();
-      filtered = filtered.filter(j =>
-        j.title.toLowerCase().includes(q) ||
-        j.company.toLowerCase().includes(q) ||
-        j.description.toLowerCase().includes(q)
-      );
-    }
-    if (params.location) {
-      const loc = params.location.toLowerCase();
-      filtered = filtered.filter(j => j.location.toLowerCase().includes(loc));
-    }
-    if (params.category && params.category !== 'All') {
-      filtered = filtered.filter(j => j.category === params.category);
-    }
-    if (params.workplaceType && params.workplaceType !== 'All') {
-      filtered = filtered.filter(j => j.workplaceType === params.workplaceType);
-    }
-    if (params.jobType && params.jobType !== 'All') {
-      filtered = filtered.filter(j => j.jobType === params.jobType);
-    }
-    return filtered;
+    const res = await apiClient.get('/jobs', { params });
+    return res.data?.data || [];
   },
   async getJobById(id) {
-    try {
-      const res = await apiClient.get(`/jobs/${id}`);
-      if (res.data?.success && res.data?.data) {
-        return res.data.data;
-      }
-    } catch (e) {}
-    const localJobs = getStorage('jobs', INITIAL_JOBS);
-    return localJobs.find(j => String(j.id) === String(id)) || null;
+    const res = await apiClient.get(`/jobs/${id}`);
+    return res.data?.data || null;
+  },
+  async getEmployerJobs() {
+    const res = await apiClient.get('/jobs/employer/mine');
+    return res.data?.data || [];
   },
   async createJob(jobData) {
-    try {
-      const res = await apiClient.post('/jobs', jobData);
-      if (res.data?.success && res.data?.data) {
-        return res.data.data;
-      }
-    } catch (e) {
-      console.warn('Backend API unavailable for createJob, persisting locally:', e.message);
-    }
-    const newJob = {
-      id: `job-${Date.now()}`,
-      postedAt: 'Just now',
-      applicantsCount: 0,
-      status: 'active',
-      featured: false,
-      companyLogo: '💼',
-      currency: 'USD',
-      ...jobData,
-    };
-    const currentJobs = getStorage('jobs', INITIAL_JOBS);
-    const updated = [newJob, ...currentJobs];
-    setStorage('jobs', updated);
-    return newJob;
+    const res = await apiClient.post('/jobs', jobData);
+    return res.data?.data || null;
   },
-  // Applications API
-  async getCandidateApplications() {
-    try {
-      const res = await apiClient.get('/applications');
-      if (res.data?.success && Array.isArray(res.data?.data) && res.data.data.length > 0) {
-        return res.data.data;
-      }
-    } catch (e) {}
-    return getStorage('applications', INITIAL_APPLICATIONS);
+  async updateJobStatus(jobId, status) {
+    const res = await apiClient.patch(`/jobs/${jobId}`, { status });
+    return res.data?.data || null;
   },
-  async applyToJob(jobId, application) {
-    try {
-      const res = await apiClient.post('/applications', { jobId, ...application });
-      if (res.data?.success && res.data?.data) {
-        return res.data.data;
-      }
-    } catch (e) {
-      console.warn('Backend API unavailable for applyToJob, persisting locally:', e.message);
-    }
-    const currentApps = getStorage('applications', INITIAL_APPLICATIONS);
-    const localJobs = getStorage('jobs', INITIAL_JOBS);
-    const job = localJobs.find(j => String(j.id) === String(jobId));
-    const newApp = {
-      id: `app-${Date.now()}`,
-      jobId,
-      jobTitle: job ? job.title : 'Software Role',
-      company: job ? job.company : 'Tech Company',
-      companyLogo: job ? job.companyLogo : '💼',
-      appliedDate: new Date().toISOString().split('T')[0],
-      status: 'Pending Review',
-      statusColor: 'bg-amber-100 text-amber-800',
-      location: job ? job.location : 'Remote',
-      salary: job ? `$${(job.salaryMin/1000).toFixed(0)}k - $${(job.salaryMax/1000).toFixed(0)}k` : 'Competitive',
-      ...application,
-    };
-    const updated = [newApp, ...currentApps];
-    setStorage('applications', updated);
-    const updatedJobs = localJobs.map(j => {
-      if (String(j.id) === String(jobId)) {
-        return { ...j, applicantsCount: (j.applicantsCount || 0) + 1 };
-      }
-      return j;
-    });
-    setStorage('jobs', updatedJobs);
-    return newApp;
+  async deleteJob(jobId) {
+    await apiClient.delete(`/jobs/${jobId}`);
   },
   async getSavedJobs() {
-    const savedIds = getStorage('saved_jobs', INITIAL_SAVED_JOBS);
-    const allJobs = await this.getJobs();
-    return allJobs.filter(j => savedIds.includes(String(j.id)) || savedIds.includes(Number(j.id)));
+    const res = await apiClient.get('/jobs/saved/list');
+    return res.data?.data || [];
   },
   async toggleSaveJob(jobId) {
-    const savedIds = getStorage('saved_jobs', INITIAL_SAVED_JOBS);
-    const strId = String(jobId);
-    let updated;
-    if (savedIds.includes(strId)) {
-      updated = savedIds.filter(id => id !== strId);
-    } else {
-      updated = [...savedIds, strId];
-    }
-    setStorage('saved_jobs', updated);
-    return updated.includes(strId);
+    const res = await apiClient.post(`/jobs/${jobId}/save`);
+    return Boolean(res.data?.data?.saved);
   },
-  async getAdminStats() {
-    try {
-      const res = await apiClient.get('/admin-dashboard/overview');
-      if (res.data?.success && res.data?.data) {
-        return res.data.data;
-      }
-    } catch (e) {}
-    return INITIAL_STATS.admin;
+
+  // Applications API
+  async getApplications() {
+    const res = await apiClient.get('/applications');
+    return res.data?.data || [];
   },
-  async getAdminAuditLogs() {
-    try {
-      const res = await apiClient.get('/admin-dashboard/audit-logs');
-      if (res.data?.success && res.data?.data) {
-        return res.data.data;
-      }
-    } catch (e) {}
-    return [
-      { id: 'log-1', admin: 'system@hireloop.com', action: 'JOB_APPROVED', target: 'job-1', timestamp: '10 mins ago', ip: '127.0.0.1' },
-      { id: 'log-2', admin: 'admin@hireloop.com', action: 'USER_ROLE_UPDATED', target: 'user-48', timestamp: '1 hour ago', ip: '192.168.1.1' },
-      { id: 'log-3', admin: 'admin@hireloop.com', action: 'SECURITY_SCAN', target: 'AUTH_SERVICE', timestamp: '3 hours ago', ip: '10.0.0.4' },
-      { id: 'log-4', admin: 'system@hireloop.com', action: 'BACKUP_COMPLETED', target: 'NEON_DB', timestamp: '1 day ago', ip: '127.0.0.1' },
-    ];
+  async getCandidateApplications() {
+    return this.getApplications();
+  },
+  async applyToJob(jobId, application) {
+    const res = await apiClient.post('/applications', { jobId, ...application });
+    return res.data?.data || null;
+  },
+  async updateApplicationStatus(applicationId, status) {
+    const res = await apiClient.patch(`/applications/${applicationId}/status`, { status });
+    return res.data?.data || null;
+  },
+
+  // Admin API
+  async getAdminDashboard() {
+    const res = await apiClient.get('/admin-dashboard');
+    return res.data?.data || {};
+  },
+  async getAdminUsers(params = {}) {
+    const res = await apiClient.get('/admin-dashboard/users', { params });
+    return res.data?.data || { rows: [], pagination: {} };
+  },
+  async updateAdminUser(userId, updates) {
+    const res = await apiClient.patch(`/admin-dashboard/users/${userId}`, updates);
+    return res.data;
+  },
+  async getAdminCompanies(params = {}) {
+    const res = await apiClient.get('/admin-dashboard/companies', { params });
+    return res.data?.data || { rows: [], pagination: {} };
+  },
+  async verifyAdminCompany(companyId, verificationStatus) {
+    const res = await apiClient.patch(`/admin-dashboard/companies/${companyId}`, { verificationStatus });
+    return res.data;
+  },
+  async getAdminJobs(params = {}) {
+    const res = await apiClient.get('/admin-dashboard/jobs', { params });
+    return res.data?.data || { rows: [], pagination: {} };
+  },
+  async moderateAdminJob(jobId, status) {
+    const res = await apiClient.patch(`/admin-dashboard/jobs/${jobId}`, { status });
+    return res.data;
   },
 };

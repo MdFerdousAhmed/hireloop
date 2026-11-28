@@ -12,6 +12,8 @@ export default function Navbar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  const role = (user?.role || '').toUpperCase();
+
   useEffect(() => {
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -30,17 +32,21 @@ export default function Navbar() {
     { label: 'Contact', href: '/contact' },
   ];
 
+  const dashboardHref =
+    role === 'EMPLOYER'
+      ? '/employer/dashboard'
+      : role === 'ADMIN'
+      ? '/admin'
+      : '/candidate/dashboard';
+
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs">
-      {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-20">
-          {/* Brand Logo */}
           <div className="flex-shrink-0">
             <Logo size="md" />
           </div>
 
-          {/* Desktop Nav Links */}
           <nav className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
@@ -58,7 +64,6 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Right Action Buttons */}
           <div className="hidden md:flex items-center gap-3">
             {!user ? (
               <>
@@ -86,7 +91,7 @@ export default function Navbar() {
                   </div>
                   <div className="text-left hidden lg:block">
                     <p className="text-xs font-bold text-gray-900 leading-tight">{user.name}</p>
-                    <p className="text-[10px] text-gray-500 capitalize">{user.role}</p>
+                    <p className="text-[10px] text-gray-500 capitalize">{role.toLowerCase()}</p>
                   </div>
                   <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -100,7 +105,7 @@ export default function Navbar() {
                       <p className="text-[11px] text-gray-500 truncate">{user.email}</p>
                     </div>
 
-                    {user.role === 'candidate' && (
+                    {role === 'CANDIDATE' && (
                       <>
                         <Link
                           href="/candidate/dashboard"
@@ -126,7 +131,7 @@ export default function Navbar() {
                       </>
                     )}
 
-                    {user.role === 'employer' && (
+                    {role === 'EMPLOYER' && (
                       <>
                         <Link
                           href="/employer/dashboard"
@@ -152,7 +157,7 @@ export default function Navbar() {
                       </>
                     )}
 
-                    {user.role === 'admin' && (
+                    {role === 'ADMIN' && (
                       <Link
                         href="/admin"
                         onClick={() => setUserMenuOpen(false)}
@@ -179,7 +184,6 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile menu hamburger button */}
           <div className="flex md:hidden items-center gap-2">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -196,7 +200,6 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile menu dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-gray-100 space-y-2">
             {navLinks.map((link) => (
@@ -230,17 +233,11 @@ export default function Navbar() {
               ) : (
                 <>
                   <Link
-                    href={
-                      user.role === 'candidate'
-                        ? '/candidate/dashboard'
-                        : user.role === 'employer'
-                        ? '/employer/dashboard'
-                        : '/admin'
-                    }
+                    href={dashboardHref}
                     onClick={() => setMobileMenuOpen(false)}
                     className="w-full text-center px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-blue-600"
                   >
-                    Go to Dashboard ({user.role})
+                    Go to Dashboard ({role.toLowerCase()})
                   </Link>
                   <button
                     onClick={() => {

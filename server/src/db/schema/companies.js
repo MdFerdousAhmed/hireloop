@@ -11,6 +11,7 @@ const companies = pgTable('companies', {
   size: varchar('size', { length: 100 }),
   description: text('description'),
   verification_status: varchar('verification_status', { length: 32 }).notNull().default('VERIFIED'),
+  owner_id: varchar('owner_id', { length: 255 }),
   created_at: timestamp('created_at').defaultNow(),
 });
 

@@ -1,53 +1,66 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { 
-  Briefcase, 
-  Mail, 
-  Lock, 
-  User, 
-  Building, 
-  Globe, 
-  ArrowRight, 
-  CheckCircle2 
-} from 'lucide-react';
+import { Mail, Lock, User, Building, Globe, ArrowRight } from 'lucide-react';
 import Logo from '../../components/Logo';
 import { useAuth } from '../../context/AuthContext';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { user, isLoading, register } = useAuth();
 
-  const [role, setRole] = useState('candidate');
+  const [role, setRole] = useState('CANDIDATE');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [companyWebsite, setCompanyWebsite] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      const r = (user.role || '').toUpperCase();
+      if (r === 'EMPLOYER') router.replace('/employer/dashboard');
+      else if (r === 'ADMIN') router.replace('/admin');
+      else router.replace('/candidate/dashboard');
+    }
+  }, [isLoading, user, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setError('');
 
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setLoading(true);
     try {
-      await register({
+      const newUser = await register({
         name,
         email,
         password,
         role,
-        companyName: role === 'employer' ? companyName : undefined,
+        companyName: role === 'EMPLOYER' ? companyName : undefined,
+        companyWebsite: role === 'EMPLOYER' ? companyWebsite : undefined,
       });
 
-      if (role === 'employer') {
+      const createdRole = (newUser?.role || role).toUpperCase();
+      if (createdRole === 'EMPLOYER') {
         router.push('/employer/dashboard');
       } else {
         router.push('/candidate/dashboard');
       }
     } catch (err) {
-      console.error(err);
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Registration failed. Please check your details and try again.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -61,20 +74,19 @@ export default function RegisterPage() {
           Create your account
         </h2>
         <p className="mt-1.5 text-xs text-gray-500">
-          Join thousands of developers and tech companies on HireLoop.
+          Join developers and tech companies on HireLoop.
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow-xl shadow-gray-200/50 sm:rounded-3xl sm:px-10 border border-gray-200">
-          {/* Role Selector Tabs */}
           <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-2xl mb-6">
             <button
               type="button"
-              onClick={() => setRole('candidate')}
+              onClick={() => setRole('CANDIDATE')}
               className={`py-2 text-xs font-bold rounded-xl transition ${
-                role === 'candidate' 
-                  ? 'bg-white text-blue-600 shadow-sm' 
+                role === 'CANDIDATE'
+                  ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-gray-500 hover:text-gray-900'
               }`}
             >
@@ -82,16 +94,22 @@ export default function RegisterPage() {
             </button>
             <button
               type="button"
-              onClick={() => setRole('employer')}
+              onClick={() => setRole('EMPLOYER')}
               className={`py-2 text-xs font-bold rounded-xl transition ${
-                role === 'employer' 
-                  ? 'bg-white text-blue-600 shadow-sm' 
+                role === 'EMPLOYER'
+                  ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-gray-500 hover:text-gray-900'
               }`}
             >
               Hiring Team (Employer)
             </button>
           </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
+              {error}
+            </div>
+          )}
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
@@ -120,7 +138,7 @@ export default function RegisterPage() {
                 <input
                   type="email"
                   required
-                  placeholder={role === 'employer' ? "work@company.com" : "you@example.com"}
+                  placeholder={role === 'EMPLOYER' ? 'work@company.com' : 'you@example.com'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-9 w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -137,7 +155,8 @@ export default function RegisterPage() {
                 <input
                   type="password"
                   required
-                  placeholder="At least 8 characters"
+                  minLength={6}
+                  placeholder="At least 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-9 w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -145,7 +164,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {role === 'employer' && (
+            {role === 'EMPLOYER' && (
               <>
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -192,7 +211,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-3 rounded-xl shadow-md shadow-blue-600/30 transition flex items-center justify-center space-x-2"
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-xs py-3 rounded-xl shadow-md shadow-blue-600/30 transition flex items-center justify-center space-x-2"
             >
               {loading ? (
                 <span>Creating account...</span>

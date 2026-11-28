@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Bookmark, MapPin, Trash2, ArrowRight, Briefcase } from 'lucide-react';
+import { Bookmark, MapPin, Trash2, ArrowRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import CompanyLogo from '@/components/CompanyLogo';
 
@@ -12,19 +12,31 @@ export default function SavedJobsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+    async function loadSaved() {
+      setLoading(true);
+      try {
+        const data = await api.getSavedJobs();
+        if (active) setSavedJobs(data || []);
+      } catch (err) {
+        console.error('Failed to load saved jobs:', err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
     loadSaved();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const loadSaved = async () => {
-    setLoading(true);
-    const data = await api.getSavedJobs();
-    setSavedJobs(data || []);
-    setLoading(false);
-  };
-
   const handleRemove = async (jobId) => {
-    await api.toggleSaveJob(jobId);
-    setSavedJobs(prev => prev.filter(j => j.id !== jobId));
+    try {
+      await api.toggleSaveJob(jobId);
+      setSavedJobs((prev) => prev.filter((j) => String(j.id) !== String(jobId)));
+    } catch (err) {
+      console.error('Failed to remove saved job:', err);
+    }
   };
 
   return (

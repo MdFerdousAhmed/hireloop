@@ -1,9 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '../lib/api';
-
-
 
 const AuthContext = createContext({
   user: null,
@@ -12,71 +11,113 @@ const AuthContext = createContext({
   isLoading: true,
   login: async () => {},
   register: async () => {},
-  logout: () => {},
-  switchRole: () => {},
+  logout: async () => {},
+  updateUser: () => {},
 });
 
+function normalizeUser(u) {
+  if (!u) return null;
+  return {
+    ...u,
+    role: (u.role || 'CANDIDATE').toUpperCase(),
+  };
+}
+
 export function AuthProvider({ children }) {
+  const router = useRouter();
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem('hireloop_user');
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-      } else {
-        setUser(null);
+    let active = true;
+
+    async function hydrateSession() {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('hireloop_token') : null;
+        if (token) {
+          const currentUser = await api.getCurrentUser();
+          if (active && currentUser) {
+            const normalized = normalizeUser(currentUser);
+            localStorage.setItem('hireloop_user', JSON.stringify(normalized));
+            setUser(normalized);
+            return;
+          }
+        }
+        // Fallback: check if httpOnly refresh cookie is valid
+        const refreshed = await api.refresh().catch(() => null);
+        if (active && refreshed?.token && refreshed?.user) {
+          const normalized = normalizeUser(refreshed.user);
+          localStorage.setItem('hireloop_token', refreshed.token);
+          localStorage.setItem('hireloop_user', JSON.stringify(normalized));
+          setUser(normalized);
+        } else if (active) {
+          localStorage.removeItem('hireloop_token');
+          localStorage.removeItem('hireloop_user');
+          setUser(null);
+        }
+      } catch {
+        if (active) {
+          localStorage.removeItem('hireloop_token');
+          localStorage.removeItem('hireloop_user');
+          setUser(null);
+        }
+      } finally {
+        if (active) setIsLoading(false);
       }
-    } catch (e) {
-      setUser(null);
-    } finally {
-      setIsLoading(false);
     }
+
+    hydrateSession();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const login = async (email, password) => {
-    setIsLoading(true);
+  const login = useCallback(async (email, password) => {
+    const res = await api.login(email, password);
+    const { token, user: rawUser } = res || {};
+    if (!token || !rawUser) {
+      throw new Error('Authentication failed: invalid server response.');
+    }
+    const normalized = normalizeUser(rawUser);
+    localStorage.setItem('hireloop_token', token);
+    localStorage.setItem('hireloop_user', JSON.stringify(normalized));
+    setUser(normalized);
+    return normalized;
+  }, []);
+
+  const register = useCallback(async (data) => {
+    const res = await api.register(data);
+    const { token, user: rawUser } = res || {};
+    if (!token || !rawUser) {
+      throw new Error('Registration failed: invalid server response.');
+    }
+    const normalized = normalizeUser(rawUser);
+    localStorage.setItem('hireloop_token', token);
+    localStorage.setItem('hireloop_user', JSON.stringify(normalized));
+    setUser(normalized);
+    return normalized;
+  }, []);
+
+  const logout = useCallback(async () => {
     try {
-      const res = await api.login(email, password);
-      const { token, user } = res;
-      localStorage.setItem('hireloop_token', token);
-      localStorage.setItem('hireloop_user', JSON.stringify(user));
-      setUser(user);
-    } catch (e) {
-      console.error('Login failed', e);
+      await api.logout();
+    } catch {
+      // Ignore network errors on logout
     } finally {
-      setIsLoading(false);
+      localStorage.removeItem('hireloop_token');
+      localStorage.removeItem('hireloop_user');
+      setUser(null);
+      router.push('/login');
     }
-  };
+  }, [router]);
 
-  const register = async (data) => {
-    setIsLoading(true);
-    try {
-      const res = await api.register(data);
-      const { token, user } = res;
-      localStorage.setItem('hireloop_token', token);
-      localStorage.setItem('hireloop_user', JSON.stringify(user));
-      setUser(user);
-    } catch (e) {
-      console.error('Register failed', e);
-    } finally {
-      setIsLoading(false);
+  const updateUser = useCallback((updated) => {
+    const normalized = normalizeUser(updated);
+    setUser(normalized);
+    if (normalized) {
+      localStorage.setItem('hireloop_user', JSON.stringify(normalized));
     }
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('hireloop_user');
-  };
-
-  const switchRole = (newRole) => {
-    if (DEMO_USERS[newRole]) {
-      const nextUser = DEMO_USERS[newRole];
-      setUser(nextUser);
-      localStorage.setItem('hireloop_user', JSON.stringify(nextUser));
-    }
-  };
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -88,7 +129,7 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
-        switchRole,
+        updateUser,
       }}
     >
       {children}

@@ -11,52 +11,85 @@ import {
   CheckCircle2,
   Award,
   ArrowUpRight,
-  ExternalLink,
 } from 'lucide-react';
 import CompanyLogo from '@/components/CompanyLogo';
+
+const STATUS_BADGES = {
+  'Pending Review': 'bg-amber-50 text-amber-700 border-amber-200',
+  'Under Review': 'bg-blue-50 text-blue-700 border-blue-200',
+  Shortlisted: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  Interview: 'bg-purple-50 text-purple-700 border-purple-200',
+  Offer: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  Hired: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  Rejected: 'bg-rose-50 text-rose-700 border-rose-200',
+};
 
 export default function CandidateDashboard() {
   const { user } = useAuth();
   const [applications, setApplications] = useState([]);
+  const [savedJobsCount, setSavedJobsCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchApps() {
+    let active = true;
+    async function fetchDashboardData() {
       try {
-        const res = await api.getCandidateApplications();
-        if (res && res.length > 0) {
-          setApplications(res);
-        }
+        const [appsRes, savedRes] = await Promise.all([
+          api.getCandidateApplications().catch(() => []),
+          api.getSavedJobs().catch(() => []),
+        ]);
+        if (!active) return;
+        setApplications(appsRes || []);
+        setSavedJobsCount((savedRes || []).length);
       } catch (err) {
-        console.error('Failed to fetch applications', err);
+        console.error('Failed to fetch dashboard data:', err);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
-    fetchApps();
+    fetchDashboardData();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const defaultRecentApps = [];
+  const shortlistedCount = applications.filter((a) =>
+    ['Shortlisted', 'Interview', 'Offer', 'Hired'].includes(a.status)
+  ).length;
+  const hiredCount = applications.filter((a) => ['Hired', 'Offer'].includes(a.status)).length;
+
+  // Dynamic real profile completion percentage
+  const profileChecks = [
+    Boolean(user?.name),
+    Boolean(user?.headline),
+    Boolean(user?.location),
+    Boolean(user?.bio),
+    Array.isArray(user?.skills) && user.skills.length > 0,
+    Boolean(user?.portfolio || user?.resumeName),
+  ];
+  const completionPct = Math.round(
+    (profileChecks.filter(Boolean).length / profileChecks.length) * 100
+  );
+  const circumference = 251.2;
+  const dashOffset = circumference - (circumference * completionPct) / 100;
 
   return (
     <DashboardLayout role="candidate" activeTab="Dashboard">
       <div className="space-y-8 max-w-7xl mx-auto">
-        {/* Header Greeting */}
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
             Candidate Dashboard
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Welcome back, <span className="font-semibold text-gray-800">{user?.name || 'Sarah'}</span>!
+            Welcome back, <span className="font-semibold text-gray-800">{user?.name || 'Candidate'}</span>!
           </p>
         </div>
 
-        {/* 4 Stat Cards */}
+        {/* 4 Real Stat Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {/* Card 1: Applications */}
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-3xl font-black text-gray-950">12</p>
+              <p className="text-3xl font-black text-gray-950">{applications.length}</p>
               <p className="text-xs font-semibold text-gray-500 mt-1">Applications</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -64,10 +97,9 @@ export default function CandidateDashboard() {
             </div>
           </div>
 
-          {/* Card 2: Saved Jobs */}
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-3xl font-black text-gray-950">8</p>
+              <p className="text-3xl font-black text-gray-950">{savedJobsCount}</p>
               <p className="text-xs font-semibold text-gray-500 mt-1">Saved Jobs</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -75,22 +107,20 @@ export default function CandidateDashboard() {
             </div>
           </div>
 
-          {/* Card 3: Shortlisted */}
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-3xl font-black text-gray-950">3</p>
-              <p className="text-xs font-semibold text-gray-500 mt-1">Shortlisted</p>
+              <p className="text-3xl font-black text-gray-950">{shortlistedCount}</p>
+              <p className="text-xs font-semibold text-gray-500 mt-1">Shortlisted / Active</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <CheckCircle2 className="w-6 h-6" />
             </div>
           </div>
 
-          {/* Card 4: Hired */}
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-3xl font-black text-gray-950">1</p>
-              <p className="text-xs font-semibold text-gray-500 mt-1">Hired</p>
+              <p className="text-3xl font-black text-gray-950">{hiredCount}</p>
+              <p className="text-xs font-semibold text-gray-500 mt-1">Offers / Hired</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <Award className="w-6 h-6" />
@@ -100,69 +130,66 @@ export default function CandidateDashboard() {
 
         {/* 2-Column Section */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Recent Applications (8 cols) */}
-          <div className="lg:col-span-8 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+          {/* Recent Applications */}
+          <div id="applications" className="lg:col-span-8 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
-              <h2 className="font-bold text-gray-900 text-lg">Recent Applications</h2>
+              <h2 className="font-bold text-gray-900 text-lg">Your Applications</h2>
               <Link href="/jobs" className="text-xs font-semibold text-blue-600 hover:underline">
-                View all →
+                Browse more jobs →
               </Link>
             </div>
 
             <div className="space-y-3">
-              {defaultRecentApps.map((app) => (
-                <div
-                  key={app.id}
-                  className="flex items-center justify-between p-3.5 rounded-xl hover:bg-gray-50 transition-colors border border-gray-50"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <CompanyLogo company={app.company} size="sm" />
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-sm">{app.role}</h4>
-                      <p className="text-xs text-gray-500">{app.company} • {app.time}</p>
-                    </div>
-                  </div>
-
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold border ${app.badgeColor}`}>
-                    {app.status}
-                  </span>
-                </div>
-              ))}
-
-              {/* Show loaded applications from DB if any */}
               {loading ? (
-                <p className="text-center text-gray-500">Loading applications…</p>
+                <p className="text-center text-sm text-gray-500 py-8">Loading applications...</p>
               ) : applications.length > 0 ? (
-                applications.slice(0, 3).map((a) => (
+                applications.map((a) => (
                   <div
                     key={a.id}
-                    className="flex items-center justify-between p-3.5 rounded-xl hover:bg-gray-50 transition-colors border border-gray-50"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100"
                   >
                     <div className="flex items-center gap-3.5">
-                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 font-bold text-sm flex items-center justify-center">
-                        💼
-                      </div>
+                      <CompanyLogo company={a.company} size="sm" />
                       <div>
-                        <h4 className="font-bold text-gray-900 text-sm">{a.job_title || 'Software Role'}</h4>
-                        <p className="text-xs text-gray-500">Applicant: {a.full_name || 'You'}</p>
+                        <Link
+                          href={`/jobs/${a.jobId}`}
+                          className="font-bold text-gray-900 text-sm hover:text-blue-600 inline-flex items-center gap-1"
+                        >
+                          <span>{a.jobTitle}</span>
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        </Link>
+                        <p className="text-xs text-gray-500">
+                          {a.company} • {a.location} • Applied {a.appliedDate}
+                        </p>
                       </div>
                     </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                      {a.status || 'Applied'}
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-bold border self-start sm:self-center ${
+                        STATUS_BADGES[a.status] || 'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}
+                    >
+                      {a.status}
                     </span>
                   </div>
                 ))
               ) : (
-                <p className="text-center text-gray-500">No applications found.</p>
+                <div className="text-center py-10 space-y-3">
+                  <p className="text-sm text-gray-500">You haven&apos;t applied to any jobs yet.</p>
+                  <Link
+                    href="/jobs"
+                    className="inline-flex items-center px-5 py-2 rounded-full text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    Find Your First Opportunity
+                  </Link>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Profile Completion Donut Chart (4 cols) */}
+          {/* Real Profile Completion Donut Chart */}
           <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col items-center text-center">
             <h2 className="font-bold text-gray-900 text-lg mb-6 self-start">Profile Completion</h2>
 
-            {/* SVG Donut Chart 85% */}
             <div className="relative w-36 h-36 flex items-center justify-center my-2">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="40" stroke="#f1f5f9" strokeWidth="10" fill="none" />
@@ -172,15 +199,26 @@ export default function CandidateDashboard() {
                   r="40"
                   stroke="#3b82f6"
                   strokeWidth="10"
-                  strokeDasharray="251.2"
-                  strokeDashoffset="37.68"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={dashOffset}
                   strokeLinecap="round"
                   fill="none"
                 />
-                <text x="50%" y="55%" textAnchor="middle" fill="#111827" fontSize="22" fontWeight="bold">85%</text>
               </svg>
+              <span className="absolute text-2xl font-bold text-gray-900">{completionPct}%</span>
             </div>
-            <p className="text-sm text-gray-600 mt-2">Complete your profile to attract more employers.</p>
+
+            <p className="text-sm text-gray-600 mt-2 mb-4">
+              {completionPct === 100
+                ? 'Your candidate profile is complete!'
+                : 'Add your headline, location, skills, and portfolio to stand out.'}
+            </p>
+            <Link
+              href="/candidate/profile"
+              className="w-full py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-colors"
+            >
+              Update My Profile
+            </Link>
           </div>
         </div>
       </div>

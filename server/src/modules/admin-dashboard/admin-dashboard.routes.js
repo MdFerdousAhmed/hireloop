@@ -11,6 +11,7 @@ router.use(authenticate, roleCheck(['ADMIN']));
 
 // Overview
 router.get('/', controller.getDashboard);
+router.get('/audit-logs', controller.getAuditLogs);
 
 // Users list & management
 router.get('/users', controller.getUsers);

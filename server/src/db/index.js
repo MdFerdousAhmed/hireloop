@@ -9,9 +9,8 @@ const pool = new Pool({
   connectionTimeoutMillis: 10000,
 });
 
-const db = drizzle({
-  client: pool,
-});
+// Initialise Drizzle ORM with the pg pool client
+const db = drizzle(pool);
 
 module.exports = {
   db,
